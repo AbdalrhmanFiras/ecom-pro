@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ProductStoreVaildate;
+use App\Http\Requests\ProductUpdateVaildate;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use Illuminate\Http\Request;
@@ -16,9 +17,9 @@ class ProductController extends Controller
      */
     public function index()
     {
-        // $user = Auth::user()->products;
+        $user = Auth::user()->products;
 
-        return ProductResource::collection(Product::all());
+        return ProductResource::collection($user);
     }
 
     /**
@@ -26,8 +27,10 @@ class ProductController extends Controller
      */
     public function store(ProductStoreVaildate $request)
     {
-        //$user_id = Auth::user()->id;
-        $product = Product::create($request->all());
+        $user_id = Auth::user()->id;//get current ID
+        $storevaildate = $request->validated();
+        $storevaildate['user_id'] = $user_id;
+        $product = Product::create($storevaildate);
         return response()->json([
             'Product' => new ProductResource($product),
             'message' => 'Create Product Successfully'
@@ -40,15 +43,25 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        return new ProductResource($product);
+        $product = Product::find($product);//search by id
+        if (!$product) {
+            abort(404, 'This product not found. Please verify the ID.');
+        }
+        return Productresource::collection($product);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Product $product)
+    public function update(ProductUpdateVaildate $request, Product $product)
     {
-        $product->update($request->all());
+        $user_id = Auth::user()->id;
+
+        if ($user_id != $product->user_id) {
+            return response()->json('Not found', 404); // Respond with a 404 if the user is not the owner
+        }
+
+        $product->update($request->validated());
 
         return response()->json([
             'Product' => new ProductResource($product),
@@ -61,6 +74,10 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
+        $user_id = Auth::user()->id;
+        if ($user_id != $product->user_id) {
+            return response()->json('Product Not found', 404);
+        }
         $product->delete();
         return response()->json('the product deleted successfully');
     }
