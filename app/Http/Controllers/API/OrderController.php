@@ -25,32 +25,33 @@ class OrderController extends Controller
     public function store(Request $request)
     {            // Validate the request data
 
-        $request->validate([
+        $request->validate([// inside the item
             'items' => 'required|array',
             'items.*.product_id' => 'required|exists:products,id',
             'itmes.*.quantity' => 'required|integer|min:1'
         ]);
         // Create the order
 
-        $order = Order::create([
+        $order = Order::create([// the main two / out the item
             'user_id' => Auth::id(),
             'total' => 0
         ]);
 
         $total = 0;
         // Add items to the order
+        // البحث عن المنتج في قاعدة البيانات
 
         foreach ($request->items as $item) {
             $product = Product::find($item['product_id']);
 
-            $orderitem = OrderItem::create([
+            $orderitem = OrderItem::create([//inside the item
                 'order_id' => $order->id,
                 'product_id' => $product->id,
                 'quantity' => $item['quantity'],
                 'price' => $product->price
             ]);
 
-            $total += $product->price * $item['quantity'];
+            $total += $product->price * $item['quantity']; // outside 
 
             $order->update(['total' => $total]);
 
@@ -64,9 +65,14 @@ class OrderController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Order $order)
     {
-        //
+        if ($order->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        return response()->json($order->load('items'));
+
     }
 
     /**
