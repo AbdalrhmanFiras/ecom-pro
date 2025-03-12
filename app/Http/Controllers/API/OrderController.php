@@ -78,10 +78,67 @@ class OrderController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, Order $order)
     {
-        //
+
+        try {
+            // Ensure the authenticated user can only update their own orders
+            if ($order->user_id !== Auth::id())
+                return response()->json(['message' => 'Unauthorized'], 403);
+
+
+            // Validate the request data
+            $request->validate([
+                'items' => 'sometimes|array',
+                'items.*.product_id' => 'sometimes|exists:products,id',
+                'items.*.quantity' => 'sometimes|integer|min:1',
+            ]);
+
+            $total = 0;
+
+            // Update or add items to the order
+            if ($request->has('items')) {
+                // Delete existing order items
+                $order->items()->delete();
+
+                // Add new items
+                foreach ($request->items as $item) {
+                    $product = Product::find($item['product_id']);
+
+                    // Create order item
+                    $orderItem = OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => $product->id,
+                        'quantity' => $item['quantity'],
+                        'price' => $product->price,
+                    ]);
+
+                    // Calculate the total
+                    $total += $product->price * $item['quantity'];
+                }
+
+                // Update the order total
+                $order->update(['total' => $total]);
+            }
+
+            // Return the updated order with its items
+            return response()->json($order->load('items'));
+        } catch (ValidationException $e) {
+            // Handle validation errors
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            // Handle other exceptions
+            return response()->json([
+                'message' => 'An error occurred while updating the order.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+
     }
+
 
     /**
      * Remove the specified resource from storage.
