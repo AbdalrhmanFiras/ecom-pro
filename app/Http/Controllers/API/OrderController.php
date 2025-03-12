@@ -1,13 +1,17 @@
 <?php
 
 namespace App\Http\Controllers\API;
+use App\Http\Resources\OrderResource;
+use App\Http\Resources\OrderItemResource;
+
 use App\Models\Order;
 use App\Models\Product;
 use App\Http\Controllers\Controller;
 use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-
+use App\Http\Requests\OrderStoreVaildate;
+use App\Http\Requests\UpdateStoreVaildate;
 class OrderController extends Controller
 {
     /**
@@ -16,20 +20,16 @@ class OrderController extends Controller
     public function index()
     {
         $orders = Order::with('items')->where('user_id', auth()->id())->get();
-        return response()->json($orders);
+        return OrderResource::collection($orders);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(OrderStoreVaildate $request)
     {            // Validate the request data
 
-        $request->validate([// inside the item
-            'items' => 'required|array',
-            'items.*.product_id' => 'required|exists:products,id',
-            'itmes.*.quantity' => 'required|integer|min:1'
-        ]);
+
         // Create the order
 
         $order = Order::create([// the main two / out the item
@@ -57,7 +57,8 @@ class OrderController extends Controller
 
 
 
-            return response()->json($order->load('items'), 201);
+            return new OrderResource($order);
+
 
         }
     }
@@ -70,81 +71,84 @@ class OrderController extends Controller
         if ($order->user_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
+        $order->load('items');
+        return new OrderResource($order);
 
-        return response()->json($order->load('items'));
 
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Order $order)
+    public function update(UpdateStoreVaildate $request, Order $order)
     {
-
         try {
-            // Ensure the authenticated user can only update their own orders
-            if ($order->user_id !== Auth::id())
+            // تأكد أن المستخدم المصدق عليه هو صاحب الطلب
+            if ($order->user_id !== Auth::id()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
+            }
 
-
-            // Validate the request data
-            $request->validate([
-                'items' => 'sometimes|array',
-                'items.*.product_id' => 'sometimes|exists:products,id',
-                'items.*.quantity' => 'sometimes|integer|min:1',
-            ]);
 
             $total = 0;
 
-            // Update or add items to the order
-            if ($request->has('items')) {
-                // Delete existing order items
+            // إذا كان الطلب يحتوي على items
+            if ($request->has('items') && is_array($request->items)) {
+                // حذف العناصر الحالية للطلب
                 $order->items()->delete();
 
-                // Add new items
+                // إضافة العناصر الجديدة
                 foreach ($request->items as $item) {
                     $product = Product::find($item['product_id']);
+                    if (!$product) {
+                        return response()->json(['message' => 'Product not found for product_id: ' . $item['product_id']], 404);
+                    }
 
-                    // Create order item
-                    $orderItem = OrderItem::create([
+                    // إنشاء عنصر جديد
+                    OrderItem::create([
                         'order_id' => $order->id,
                         'product_id' => $product->id,
                         'quantity' => $item['quantity'],
                         'price' => $product->price,
                     ]);
 
-                    // Calculate the total
+                    // حساب التكلفة الإجمالية
                     $total += $product->price * $item['quantity'];
                 }
 
-                // Update the order total
+                // تحديث التكلفة الإجمالية للطلب
                 $order->update(['total' => $total]);
             }
 
-            // Return the updated order with its items
-            return response()->json($order->load('items'));
+            // إرجاع الطلب المحدث مع العناصر باستخدام OrderResource
+            return new OrderResource($order->load('items'));
         } catch (ValidationException $e) {
-            // Handle validation errors
+            // معالجة أخطاء التحقق
             return response()->json([
                 'message' => 'Validation failed',
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
-            // Handle other exceptions
+            // معالجة الأخطاء العامة
             return response()->json([
                 'message' => 'An error occurred while updating the order.',
                 'error' => $e->getMessage(),
             ], 500);
         }
-
     }
 
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Order $order)
     {
-        //
+        if ($order->user_id !== Auth::id())
+            return response()->json(['message' => 'Unauthorized'], 403);
+
+        $order->items()->delete();
+        $order->delete();
+
+        return response()->json(['message' => 'Order deleted successfully']);
+
     }
 }
