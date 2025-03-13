@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\API;
 use App\Http\Resources\OrderResource;
 use App\Http\Resources\OrderItemResource;
-
+use Illuminate\Support\Facades\DB;
 use App\Models\Order;
 use App\Models\Product;
 use App\Http\Controllers\Controller;
@@ -80,55 +80,70 @@ class OrderController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateStoreVaildate $request, Order $order)
+    public function update(Request $request, Order $order)
     {
+        // Ensure the authenticated user is the owner of the order
+        if ($order->user_id !== auth()->id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Validate the request
+        $request->validate([
+            'items' => 'required|array',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+        ]);
+
+        // Start a database transaction
+        DB::beginTransaction();
+
         try {
-            // تأكد أن المستخدم المصدق عليه هو صاحب الطلب
-            if ($order->user_id !== Auth::id()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-
-
             $total = 0;
 
-            // إذا كان الطلب يحتوي على items
-            if ($request->has('items') && is_array($request->items)) {
-                // حذف العناصر الحالية للطلب
-                $order->items()->delete();
+            // Get the product IDs from the request
+            $requestProductIds = collect($request->items)->pluck('product_id')->toArray();
 
-                // إضافة العناصر الجديدة
-                foreach ($request->items as $item) {
-                    $product = Product::find($item['product_id']);
-                    if (!$product) {
-                        return response()->json(['message' => 'Product not found for product_id: ' . $item['product_id']], 404);
-                    }
+            // Remove items that are not in the request
+            $order->items()->whereNotIn('product_id', $requestProductIds)->delete();
 
-                    // إنشاء عنصر جديد
+            // Loop through the items in the request
+            foreach ($request->items as $item) {
+                $product = Product::find($item['product_id']);
+
+                // Check if the item already exists in the order
+                $existingItem = $order->items()->where('product_id', $item['product_id'])->first();
+
+                if ($existingItem) {
+                    // Update the existing item
+                    $existingItem->update([
+                        'quantity' => $item['quantity'],
+                        'price' => $product->price, // Update price in case it changed
+                    ]);
+                } else {
+                    // Create a new item
                     OrderItem::create([
                         'order_id' => $order->id,
                         'product_id' => $product->id,
                         'quantity' => $item['quantity'],
                         'price' => $product->price,
                     ]);
-
-                    // حساب التكلفة الإجمالية
-                    $total += $product->price * $item['quantity'];
                 }
 
-                // تحديث التكلفة الإجمالية للطلب
-                $order->update(['total' => $total]);
+                // Calculate the total cost
+                $total += $product->price * $item['quantity'];
             }
 
-            // إرجاع الطلب المحدث مع العناصر باستخدام OrderResource
-            return new OrderResource($order->load('items'));
-        } catch (ValidationException $e) {
-            // معالجة أخطاء التحقق
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $e->errors(),
-            ], 422);
+            // Update the total cost of the order
+            $order->update(['total' => $total]);
+
+            // Commit the transaction
+            DB::commit();
+
+            // Return the updated order with items
+            return response()->json($order->load('items'), 200);
         } catch (\Exception $e) {
-            // معالجة الأخطاء العامة
+            // Rollback the transaction in case of an error
+            DB::rollBack();
             return response()->json([
                 'message' => 'An error occurred while updating the order.',
                 'error' => $e->getMessage(),
