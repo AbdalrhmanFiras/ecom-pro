@@ -20,6 +20,73 @@ class OrderController extends Controller
 {
 
 
+    public function markAsCancelled(Request $request, Order $order)
+    {
+        // Ensure the order belongs to the authenticated user (or admin)
+        if ($order->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Ensure the order is in a state that can be cancelled
+        if ($order->status === OrderStatus::CANCELLED->value || $order->status === OrderStatus::DELIVERED->value) {
+            return response()->json([
+                'message' => 'Order cannot be cancelled because it is already ' . $order->status . '.',
+            ], 400);
+        }
+
+        // Validate the request data (e.g., cancellation reason)
+        try {
+            $request->validate([
+                'cancellation_reason' => 'required|string|max:255', // Example: Reason for cancellation
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        // Start a database transaction
+        DB::beginTransaction();
+
+        try {
+            // Update the status to CANCELLED
+            $order->update([
+                'status' => OrderStatus::CANCELLED->value,
+                'cancellation_reason' => $request->cancellation_reason, // Save cancellation reason
+            ]);
+
+            // Log the status change
+            Log::info('Order cancelled', [
+                'order_id' => $order->id,
+                'status' => OrderStatus::CANCELLED->value,
+                'cancellation_reason' => $request->cancellation_reason,
+            ]);
+
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Order status updated to CANCELLED.',
+                'order' => new OrderResource($order->load('items')),
+            ]);
+        } catch (\Exception $e) {
+            // Rollback the transaction in case of an error
+            DB::rollBack();
+
+            // Log the error
+            Log::error('Failed to mark order as cancelled', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'An error occurred while updating the order status.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
 
     public function markAsDelivered(Request $request, Order $order)
@@ -179,21 +246,6 @@ class OrderController extends Controller
         }
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     public function confirmOrder(Order $order)
     {
         if ($order->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
@@ -271,33 +323,6 @@ class OrderController extends Controller
     {
         return true;
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     /**

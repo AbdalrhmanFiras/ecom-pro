@@ -7,7 +7,7 @@ use App\Enums\OrderStatus;
 class Order extends Model
 {
 
-    protected $fillable = ['total', 'status', 'user_id', 'quantity', 'product_id', 'order_id', 'price', 'tracking_number', 'carrier', 'delivery_confirmation'];
+    protected $fillable = ['total', 'status', 'user_id', 'quantity', 'product_id', 'order_id', 'price', 'tracking_number', 'carrier', 'delivery_confirmation', 'cancellation_reason'];
 
     protected $casts = [
         'status' => OrderStatus::class, // Cast the status field to the OrderStatus enum
