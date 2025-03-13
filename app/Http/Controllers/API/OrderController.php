@@ -13,9 +13,217 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Requests\OrderStoreVaildate;
 use App\Http\Requests\UpdateStoreVaildate;
 use App\Enums\OrderStatus;
+use App\Notifications\OrderShippedNotification;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
+    public function markAsShipped(Request $request, Order $order)
+    {
+
+
+        // Log order details
+
+
+        // Ensure the order belongs to the authenticated user (or admin)
+        if ($order->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        \Log::info('Checking Order Status:', [
+            'expected' => OrderStatus::PROCESSING->value,
+            'actual' => $order->status,
+            'order_id' => $order->id
+        ]);
+        // Validate the request data (e.g., tracking information)
+        try {
+            $request->validate([
+                'tracking_number' => 'required|string|max:255',
+                'carrier' => 'required|string|max:255',
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+        $order->refresh();
+
+        // Ensure the order is in a state that can be shipped
+        if ($order->status !== OrderStatus::PROCESSING) {
+            return response()->json([
+                'message' => 'Order cannot be confirmed because it is not in the pending state.',
+            ], 400);
+        }
+
+        // Start a database transaction
+        DB::beginTransaction();
+
+        try {
+            // Update the status to SHIPPED and add tracking information
+            $order->update([
+                'status' => OrderStatus::SHIPPED->value,
+                'tracking_number' => $request->tracking_number,
+                'carrier' => $request->carrier,
+            ]);
+
+            // Log the status change
+            Log::info('Order shipped', [
+                'order_id' => $order->id,
+                'status' => OrderStatus::SHIPPED->value,
+                'tracking_number' => $request->tracking_number,
+                'carrier' => $request->carrier,
+            ]);
+
+            // Send notifications to the customer and admin
+            // Optionally, notify the admin as well
+            // Admin::first()->notify(new OrderShippedNotification($order));
+
+            // Commit the transaction
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Order status updated to SHIPPED.',
+                'order' => new OrderResource($order->load('items')),
+            ]);
+        } catch (\Exception $e) {
+            // Rollback the transaction in case of an error
+            DB::rollBack();
+
+            // Log the error
+            Log::error('Failed to ship order', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'An error occurred while updating the order status.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    public function confirmOrder(Order $order)
+    {
+        if ($order->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Log order details
+        \Log::info('Checking Order Status:', [
+            'expected' => OrderStatus::PENDING->value,
+            'actual' => $order->status,
+            'order_id' => $order->id
+        ]);
+
+        // Refresh to get the latest order status
+        $order->refresh();
+
+        if ($order->status !== OrderStatus::PENDING) {
+            return response()->json([
+                'message' => 'Order cannot be confirmed because it is not in the pending state.',
+            ], 400);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($order->items as $item) {
+                $product = Product::find($item->product_id); // Use product_id instead of $item->product
+
+                if (!$product) {
+                    DB::rollBack();
+                    return response()->json(['message' => 'Product not found.'], 400);
+                }
+
+                if ($product->stock < $item->quantity) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'Product out of stock: ' . $product->name,
+                    ], 400);
+                }
+
+                // Reduce stock
+                $product->decrement('stock', $item->quantity);
+            }
+
+            // Process the payment
+            $paymentSuccess = $this->processPayment($order);
+
+            if (!$paymentSuccess) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'Payment failed.',
+                ], 400);
+            }
+
+            // Update the order status
+            $order->update(['status' => OrderStatus::PROCESSING->value]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Order confirmed and status updated to PROCESSING.',
+                'order' => new OrderResource($order->load('items')),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'An error occurred while confirming the order.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    private function processPayment(Order $order): bool
+    {
+        return true;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     /**
      * Display a listing of the resource.
      */
