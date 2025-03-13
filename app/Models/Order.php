@@ -1,9 +1,8 @@
 <?php
 
 namespace App\Models;
-use App\Enums\OrderStatus;
-
 use Illuminate\Database\Eloquent\Model;
+use App\Enums\OrderStatus;
 
 class Order extends Model
 {

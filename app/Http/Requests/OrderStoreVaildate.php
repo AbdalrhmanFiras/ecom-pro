@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use App\Enums\OrderStatus;
 
 class OrderStoreVaildate extends FormRequest
 {
@@ -24,7 +25,9 @@ class OrderStoreVaildate extends FormRequest
         return [
             'items' => 'required|array',
             'items.*.product_id' => 'required|exists:products,id',
-            'itmes.*.quantity' => 'required|integer|min:1'
+            'itmes.*.quantity' => 'required|integer|min:1',
+            'status' => 'sometimes|string|in:' . implode(',', OrderStatus::values()), // Validate status
+
         ];
     }
 }

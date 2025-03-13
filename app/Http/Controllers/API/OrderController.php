@@ -12,6 +12,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Requests\OrderStoreVaildate;
 use App\Http\Requests\UpdateStoreVaildate;
+use App\Enums\OrderStatus;
+
 class OrderController extends Controller
 {
     /**
@@ -22,6 +24,8 @@ class OrderController extends Controller
         $orders = Order::with('items')->where('user_id', auth()->id())->get();
         return OrderResource::collection($orders);
     }
+
+
 
     /**
      * Store a newly created resource in storage.
@@ -34,7 +38,9 @@ class OrderController extends Controller
 
         $order = Order::create([// the main two / out the item
             'user_id' => Auth::id(),
-            'total' => 0
+            'total' => 0,
+            'status' => OrderStatus::PENDING->value, // Default status
+
         ]);
 
         $total = 0;
@@ -49,19 +55,25 @@ class OrderController extends Controller
                 'product_id' => $product->id,
                 'quantity' => $item['quantity'],
                 'price' => $product->price
+
             ]);
 
             $total += $product->price * $item['quantity']; // outside 
 
-            $order->update(['total' => $total]);
-
-
-
-            return new OrderResource($order);
-
 
         }
+        $order->update(['total' => $total]);
+
+        return new OrderResource($order);
+
+
+
     }
+
+
+
+
+
 
     /**
      * Display the specified resource.
@@ -77,10 +89,16 @@ class OrderController extends Controller
 
     }
 
+
+
+
+
+
+
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Order $order)
+    public function update(UpdateStoreVaildate $request, Order $order)
     {
         // Ensure the authenticated user is the owner of the order
         if ($order->user_id !== auth()->id()) {
@@ -139,18 +157,18 @@ class OrderController extends Controller
             // Commit the transaction
             DB::commit();
 
-            // Return the updated order with items
-            return response()->json($order->load('items'), 200);
+            // Eager load the order items relationship
+            $order->load('items');
+
+            // Return the updated order with its items
+            return new OrderResource($order);
+
         } catch (\Exception $e) {
             // Rollback the transaction in case of an error
             DB::rollBack();
-            return response()->json([
-                'message' => 'An error occurred while updating the order.',
-                'error' => $e->getMessage(),
-            ], 500);
+            return response()->json(['message' => 'An error occurred while updating the order.'], 500);
         }
     }
-
 
     /**
      * Remove the specified resource from storage.
