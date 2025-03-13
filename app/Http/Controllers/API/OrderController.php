@@ -18,8 +18,84 @@ use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
+
+
+
+
+    public function markAsDelivered(Request $request, Order $order)
+    {
+        // Ensure the order belongs to the authenticated user (or admin)
+        if ($order->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Validate the request data
+        try {
+            $request->validate([
+                'delivery_confirmation' => 'required|string|max:255',
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        // Ensure the order is in SHIPPED status before marking as DELIVERED
+        if ($order->status !== OrderStatus::SHIPPED) {
+            return response()->json([
+                'message' => 'Order cannot be marked as delivered because it is not in the shipped state.',
+            ], 400);
+        }
+
+        // Start a transaction
+        DB::beginTransaction();
+
+        try {
+            // Update the status to DELIVERED
+            $order->update([
+                'status' => OrderStatus::DELIVERED->value,
+                'delivery_confirmation' => $request->delivery_confirmation,
+            ]);
+
+            // Log the status change
+            Log::info('Order delivered', [
+                'order_id' => $order->id,
+                'status' => OrderStatus::DELIVERED->value,
+                'delivery_confirmation' => $request->delivery_confirmation,
+            ]);
+
+            // Commit the transaction
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Order status updated to DELIVERED.',
+                'order' => new OrderResource($order->load('items')),
+            ]);
+        } catch (\Exception $e) {
+            // Rollback in case of error
+            DB::rollBack();
+
+            // Log the error
+            Log::error('Failed to mark order as delivered', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'An error occurred while updating the order status.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+
+
     public function markAsShipped(Request $request, Order $order)
     {
+
+
 
 
         // Log order details
