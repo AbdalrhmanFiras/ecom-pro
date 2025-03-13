@@ -18,6 +18,74 @@ use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
+    public function markAsRefunded(Request $request, Order $order)
+    {
+        // Ensure the order belongs to the authenticated user (or admin)
+        if ($order->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Ensure the order is in a state that can be refunded
+        if ($order->status === OrderStatus::REFUNDED->value) {
+            return response()->json([
+                'message' => 'Order cannot be refunded because it is already refunded.',
+            ], 400);
+        }
+
+        // Validate the request data (e.g., refund reason)
+        try {
+            $request->validate([
+                'refund_reason' => 'required|string|max:255', // Example: Reason for refund
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        // Start a database transaction
+        DB::beginTransaction();
+
+        try {
+            // Update the status to REFUNDED
+            $order->update([
+                'status' => OrderStatus::REFUNDED->value,
+                'refund_reason' => $request->refund_reason, // Save refund reason
+            ]);
+
+            // Log the status change
+            Log::info('Order refunded', [
+                'order_id' => $order->id,
+                'status' => OrderStatus::REFUNDED->value,
+                'refund_reason' => $request->refund_reason,
+            ]);
+
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Order status updated to REFUNDED.',
+                'order' => new OrderResource($order->load('items')),
+            ]);
+        } catch (\Exception $e) {
+            // Rollback the transaction in case of an error
+            DB::rollBack();
+
+            // Log the error
+            Log::error('Failed to mark order as refunded', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'An error occurred while updating the order status.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
 
 
     public function markAsCancelled(Request $request, Order $order)

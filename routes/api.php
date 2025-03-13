@@ -18,11 +18,11 @@ Route::post('logout', [UserController::class, 'logout'])->middleware('auth:sanct
 
 
 Route::apiResource('product', ProductController::class)->middleware('auth:sanctum');
-
 Route::patch('order/{order}/confirm', [OrderController::class, 'confirmOrder'])->middleware('auth:sanctum');
 Route::patch('order/{order}/markAsShipped', [OrderController::class, 'markAsShipped'])->middleware('auth:sanctum');
 Route::patch('order/{order}/markAsDelivered', [OrderController::class, 'markAsDelivered'])->middleware('auth:sanctum');
 Route::patch('order/{order}/markAsCancelled', [OrderController::class, 'markAsCancelled'])->middleware('auth:sanctum');
+Route::patch('order/{order}/markAsRefunded', [OrderController::class, 'markAsRefunded'])->middleware('auth:sanctum');
 
 Route::apiResource('order', OrderController::class)->middleware('auth:sanctum');
 
