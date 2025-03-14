@@ -19,11 +19,13 @@ class OrderResource extends JsonResource
             'id' => $this->id,
             'user_id' => $this->user_id,
             'total' => $this->total,
-            'status' => $this->status,
             'carrier' => $this->carrier,
-            'Order_Date' => $this->created_at->format('Y-m-d'),
+            'tracking_number' => $this->tracking_number,
+            'Order_Date' => $this->created_at->format('Y-m-d h:i:s'),
             'items' => OrderItemResource::collection($this->whenLoaded('items')),
-            'completed_at' => $this->completed_at // Include the completion date
+            'completed_at' => $this->completed_at,
+            'status' => $this->status
+
 
         ];
     }
