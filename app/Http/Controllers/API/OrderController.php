@@ -175,10 +175,11 @@ class OrderController extends Controller
         DB::beginTransaction();
 
         try {
-            // Update the status to REFUNDED
+            // Update the status to REFUNDED and set completed_at
             $order->update([
                 'status' => OrderStatus::REFUNDED->value,
-                'refund_reason' => $request->refund_reason, // Save refund reason
+                'refund_reason' => $request->refund_reason,
+                'completed_at' => now(), // Set the completion date
             ]);
 
             // Log the status change
@@ -186,8 +187,8 @@ class OrderController extends Controller
                 'order_id' => $order->id,
                 'status' => OrderStatus::REFUNDED->value,
                 'refund_reason' => $request->refund_reason,
+                'completed_at' => $order->completed_at, // Log the completion date
             ]);
-
 
             DB::commit();
 
@@ -211,8 +212,6 @@ class OrderController extends Controller
             ], 500);
         }
     }
-
-
 
 
     public function markAsCancelled(Request $request, Order $order)

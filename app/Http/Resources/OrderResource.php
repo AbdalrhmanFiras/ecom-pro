@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Resources;
+use App\Enums\OrderStatus;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -24,6 +25,9 @@ class OrderResource extends JsonResource
             'Order_Date' => $this->created_at->format('Y-m-d h:i:s'),
             'items' => OrderItemResource::collection($this->whenLoaded('items')),
             'completed_at' => $this->completed_at,
+            'refund_reason' => $this->when($this->status === OrderStatus::REFUNDED, $this->refund_reason),
+            'cancellation_reason' => $this->when($this->status === OrderStatus::CANCELLED, $this->cancellation_reason),
+
             'status' => $this->status
 
 
