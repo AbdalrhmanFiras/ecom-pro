@@ -15,11 +15,34 @@ class ProductController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $user = Auth::user()->products;
+        $query = Auth::user()->products();
 
-        return ProductResource::collection($user);
+        if ($request->has('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        if ($request->has('categoeries_id')) {
+            $query->where('categoeries_id', 'like', '%' . $request->category_id . '%');
+        }
+
+        if ($request->has('min_price')) {
+            $query->where('price', '>=', $request->min_price);
+        }
+
+        if ($request->has('max_price')) {
+            $query->where('price', '<=', $request->max_price);
+        }
+
+        // Get all matching products (without pagination)
+        $products = $query->get();
+
+        // Use mapInto() on the collection (not the query builder)
+        $mappedProducts = $products->mapInto(ProductResource::class);
+
+        // Return the mapped products
+        return response()->json($mappedProducts);
     }
 
     /**
