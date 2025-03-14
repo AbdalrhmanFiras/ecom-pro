@@ -16,13 +16,13 @@ Route::post('register', [UserController::class, 'register']);
 Route::post('login', [UserController::class, 'login']);
 Route::post('logout', [UserController::class, 'logout'])->middleware('auth:sanctum');
 
-
 Route::apiResource('product', ProductController::class)->middleware('auth:sanctum');
 Route::patch('order/{order}/confirm', [OrderController::class, 'confirmOrder'])->middleware('auth:sanctum');
 Route::patch('order/{order}/markAsShipped', [OrderController::class, 'markAsShipped'])->middleware('auth:sanctum');
 Route::patch('order/{order}/markAsDelivered', [OrderController::class, 'markAsDelivered'])->middleware('auth:sanctum');
 Route::patch('order/{order}/markAsCancelled', [OrderController::class, 'markAsCancelled'])->middleware('auth:sanctum');
 Route::patch('order/{order}/markAsRefunded', [OrderController::class, 'markAsRefunded'])->middleware('auth:sanctum');
+Route::patch('order/{order}/markAsCompleted', [OrderController::class, 'markAsCompleted'])->middleware('auth:sanctum');
 
 Route::apiResource('order', OrderController::class)->middleware('auth:sanctum');
 

@@ -5,6 +5,7 @@ use App\Http\Resources\OrderResource;
 use App\Http\Resources\OrderItemResource;
 use Illuminate\Support\Facades\DB;
 use App\Models\Order;
+use App\Models\User;
 use App\Models\Product;
 use App\Http\Controllers\Controller;
 use App\Models\OrderItem;
@@ -18,6 +19,132 @@ use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
+
+    public function isCompleted(Order $order): bool
+    {
+        // Directly compare the order's status with the COMPLETED enum value
+        return $order->status === OrderStatus::COMPLETED->value;
+    }
+
+    /**
+     * Check if the order is in the DELIVERED state.
+     */
+    public function iscan(Order $order): bool
+    {
+        $currentStatus = $order->status;
+        $expectedStatus = OrderStatus::DELIVERED->value;
+
+        Log::info('Checking order status', [
+            'order_id' => $order->id,
+            'current_status' => $currentStatus,
+            'current_status_type' => gettype($currentStatus), // Log the type of the status
+            'expected_status' => $expectedStatus,
+            'expected_status_type' => gettype($expectedStatus), // Log the type of the expected status
+        ]);
+
+        return $currentStatus === $expectedStatus;
+    }
+
+    /**
+     * Check if the user is authorized to mark the order as completed.
+     */
+    public function CanMarkComplete(Order $order): bool
+    {
+        $user = auth()->user();
+        return $order->user_id === $user->id || $user->isAdmin();
+    }
+
+    /**
+     * Mark the order as completed.
+     */
+    public function markAsCompleted(Order $order)
+    {
+        // Get the authenticated user
+        $user = auth()->user();
+
+        // Log the order's status before checking
+        Log::info('Order status before checks', [
+            'order_id' => $order->id,
+            'status' => $order->status,
+        ]);
+
+        // Check if the user is authorized to mark the order as completed
+        if (!$this->CanMarkComplete($order)) {
+            throw new \Exception('You are not authorized to mark this order as completed.');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // Update the status to COMPLETED and set the completion timestamp
+            $order->update([
+                'status' => OrderStatus::COMPLETED->value,
+                'completed_at' => now(), // Set the current timestamp
+            ]);
+
+            // Refresh the order instance to reflect the latest changes
+            $order->refresh();
+
+            // Log the updated order data
+            Log::info('Order updated', [
+                'order_id' => $order->id,
+                'status' => $order->status,
+                'completed_at' => $order->completed_at, // Log the completion timestamp
+            ]);
+
+            // Log the status change
+            Log::info('Order completed', [
+                'order_id' => $order->id,
+                'status' => OrderStatus::COMPLETED->value,
+            ]);
+
+            // Additional check for admin-specific logic
+            if ($user->isAdmin()) {
+                Log::info('Admin marked order as completed', [
+                    'order_id' => $order->id,
+                    'admin_id' => $user->id,
+                ]);
+            }
+
+            DB::commit();
+
+            return new OrderResource($order);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to mark order as completed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Check if an order is completed (API endpoint example).
+     */
+    public function checkIfOrderIsCompleted(Order $order)
+    {
+        try {
+            if ($this->isCompleted($order)) {
+                return response()->json([
+                    'message' => 'Order is completed.',
+                    'order' => $order,
+                ]);
+            } else {
+                return response()->json([
+                    'message' => 'Order is not completed.',
+                    'order' => $order,
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while checking the order status.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function markAsRefunded(Request $request, Order $order)
     {
         // Ensure the order belongs to the authenticated user (or admin)
@@ -230,12 +357,6 @@ class OrderController extends Controller
     public function markAsShipped(Request $request, Order $order)
     {
 
-
-
-
-        // Log order details
-
-
         // Ensure the order belongs to the authenticated user (or admin)
         if ($order->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
             return response()->json(['message' => 'Unauthorized'], 403);
@@ -263,7 +384,7 @@ class OrderController extends Controller
         // Ensure the order is in a state that can be shipped
         if ($order->status !== OrderStatus::PROCESSING) {
             return response()->json([
-                'message' => 'Order cannot be confirmed because it is not in the pending state.',
+                'message' => 'Order cannot be shipped because it is not in the processing state.',
             ], 400);
         }
 
@@ -447,11 +568,6 @@ class OrderController extends Controller
 
     }
 
-
-
-
-
-
     /**
      * Display the specified resource.
      */
@@ -465,12 +581,6 @@ class OrderController extends Controller
 
 
     }
-
-
-
-
-
-
 
     /**
      * Update the specified resource in storage.
