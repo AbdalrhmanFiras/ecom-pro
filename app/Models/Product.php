@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Product extends Model
 {
     // use HasFactory;
-    protected $fillable = ['name', 'price', 'description', 'stock', 'user_id', 'Categoery'];
+    protected $fillable = ['name', 'price', 'description', 'stock', 'user_id', 'Categoery', 'warranty'];
 
     public function withlists()
     {

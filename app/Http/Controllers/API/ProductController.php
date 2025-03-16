@@ -18,45 +18,76 @@ class ProductController extends Controller
      */
     public function index(FilterRequset $request)
     {
-        // add Rating Filter , Filter by Delivery Options , Filter by Warranty
+        // add Rating Filter , Filter by Delivery Options 
         $query = Auth::user()->products();
 
         if ($request->has('search')) {//filter by name 
             $query->where('name', 'like', '%' . $request->search . '%');
+            $messages['search'] = ' no product found matching the name: ' . $request->search;
         }
 
-        if ($request->has('Categoery')) {//filter by Categoery 
-            $query->where('Categoery', 'like', '%' . $request->category_id . '%');
+        if ($request->has('category_id')) { // Filter by Category (Fixed Key)
+            $query->where('category', 'like', '%' . $request->category_id . '%');
         }
+
 
         if ($request->has('min_price')) {//filter by min_price 
             $query->where('price', '>=', $request->min_price);
+            $messages['min_price'] = 'no product found with a minimum price of :' . $request->min_price;
         }
 
         if ($request->has('max_price')) {//filter by max_price 
             $query->where('price', '<=', $request->max_price);
+            $messages['max_price'] = 'no product found with a maximum price of :' . $request->max_price;
         }
 
         if ($request->has('min_price') && ($request->has('max_price'))) {//filter by Range
 
             $query->whereBetween('price', [$request->min_price, $request->max_price]);
+            $messages['price_range'] = 'no product found with a price range' . $request->min_price . 'to' . $request->max_price;
         }
 
         if ($request->has('equal')) {//filter by equal
             $query->where('price', '=', $request->equal);
+            $messages['equal'] = 'no product found equal' . $request->equal;
         }
 
         if ($request->has('Availability')) {//filter by stock
             $query->where('stock', '>', '0');
+
         }
+
+        if ($request->has('warranty')) {
+            $query->where('warranty', 'like', $request->warranty);
+            $messages['warranty'] = 'no product have ' . $request->warranty . ' warranty';
+        }
+
+
 
         // Get all matching products (without pagination)
         $products = $query->get();
+
+
+        if ($products->isEmpty()) {
+            $repones = [];
+            foreach ($messages as $key => $message) {
+                if ($request->has($key)) {
+                    $repones[$key] = $message;
+                }
+            }
+
+            return response()->json([
+                'message' => 'No products found based on your filters.',
+                'errors' => $repones,
+            ], 404);
+        }
+
         // i cant return the query directly in resourece , i use mapinto to make the query shape look like resourece and i return in json  
         // Use mapInto() on the collection 
-        $mappedProducts = $products->mapInto(ProductResource::class);
 
         // Return the mapped products
+        $mappedProducts = $products->mapInto(ProductResource::class);
+
         return response()->json($mappedProducts);
     }
 

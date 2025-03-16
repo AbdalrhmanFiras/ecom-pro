@@ -11,7 +11,7 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            $table->string('Warranty')->default('1 Month');
+            $table->string('warranty')->nullable()->default('1 Month');
         });
     }
 
@@ -21,7 +21,7 @@ return new class extends Migration {
     public function down(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            $table->dropColumn('Warranty');
+            $table->dropColumn('warranty');
         });
     }
 };
