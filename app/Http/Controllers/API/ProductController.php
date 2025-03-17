@@ -18,7 +18,7 @@ class ProductController extends Controller
      */
     public function index(FilterRequset $request)
     {
-        // add Rating Filter , Filter by Delivery Options 
+        // add Rating Filter ; later soon 
         $query = Auth::user()->products();
 
         if ($request->has('search')) {//filter by name 
