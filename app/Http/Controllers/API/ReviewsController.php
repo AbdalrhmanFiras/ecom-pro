@@ -1,6 +1,9 @@
 <?php
 
 namespace App\Http\Controllers\API;
+use App\Http\Requests\ReviewStore;
+use App\Http\Requests\ReviewUpdate;
+use App\Http\Resources\ReviewResource;
 use App\Models\Product;
 use App\Http\Controllers\Controller;
 use App\Models\Review;
@@ -21,14 +24,8 @@ class ReviewsController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(ReviewStore $request)
     {
-        $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'commit' => 'required|string',
-            'rating' => 'required|integer|between:1,5'
-        ]);
-
         $review = Review::create([
             'product_id' => $request->product_id,
             'user_id' => auth()->id(),
@@ -36,11 +33,10 @@ class ReviewsController extends Controller
             'rating' => $request->rating
         ]);
 
-
         return response()->json(
             [
                 'message' => 'review Added successfully',
-                'review' => $review
+                'review' => new ReviewResource($review)
             ],
             200
         );
@@ -53,18 +49,15 @@ class ReviewsController extends Controller
     public function show($productID)
     {
         $product_review = Review::where('product_id', $productID)->get();
-        return response()->json($product_review);
+        return ReviewResource::collection($product_review);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, $id)
+    public function update(ReviewUpdate $request, $id)
     {
-        $request->validate([
-            'commit' => 'sometimes|string|min:12',
-            'rating' => 'sometimes|integer|between:1,5'
-        ]);
+
 
         $review = Review::findOrFail($id);
 
@@ -74,7 +67,7 @@ class ReviewsController extends Controller
 
         $review->update($request->only('commit', 'rating'));
 
-        return response()->json($review);
+        return response()->json(['review' => new ReviewResource($review)], 200);
     }
 
 
