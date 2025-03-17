@@ -5,6 +5,8 @@ use App\Http\Controllers\API\OrderController;
 use App\Http\Controllers\API\ProductController;
 use App\Http\Controllers\API\ReviewsController;
 use App\Http\Controllers\API\UserController;
+use App\Http\Controllers\API\WishlistController;
+use App\Http\Controllers\API\WithlistController;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +20,8 @@ Route::post('login', [UserController::class, 'login']);
 Route::post('logout', [UserController::class, 'logout'])->middleware('auth:sanctum');
 
 Route::apiResource('reviews', ReviewsController::class)->middleware('auth:sanctum');
+Route::apiResource('wishlist', WishlistController::class)->middleware('auth:sanctum');
+
 
 Route::apiResource('product', ProductController::class)->middleware('auth:sanctum');
 Route::patch('order/{order}/confirm', [OrderController::class, 'confirmOrder'])->middleware('auth:sanctum');

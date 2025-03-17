@@ -19,7 +19,6 @@ class ProductController extends Controller
     public function index(FilterRequset $request)
     {
         $messages = [];
-        // add Rating Filter ; later soon 
         $query = Auth::user()->products();
 
         if ($request->has('search')) {//filter by name 
