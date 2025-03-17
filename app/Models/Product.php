@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Product extends Model
 {
     // use HasFactory;
-    protected $fillable = ['name', 'price', 'description', 'stock', 'user_id', 'Categoery', 'warranty', 'review'];
+    protected $fillable = ['name', 'price', 'description', 'stock', 'user_id', 'Categoery', 'warranty', 'review', 'rating'];
 
     public function withlists()
     {
@@ -19,7 +19,7 @@ class Product extends Model
         return $this->belongsTo(Categoery::class);
     }
 
-    public function reivews()
+    public function reviews()
     {
         return $this->hasMany(Review::class);
     }

@@ -18,6 +18,7 @@ class ProductController extends Controller
      */
     public function index(FilterRequset $request)
     {
+        $messages = [];
         // add Rating Filter ; later soon 
         $query = Auth::user()->products();
 
@@ -41,7 +42,7 @@ class ProductController extends Controller
             $messages['max_price'] = 'no product found with a maximum price of :' . $request->max_price;
         }
 
-        if ($request->has('min_price') && ($request->has('max_price'))) {//filter by Range
+        if ($request->has('price_range') && ($request->has('max_price'))) {//filter by Range
 
             $query->whereBetween('price', [$request->min_price, $request->max_price]);
             $messages['price_range'] = 'no product found with a price range' . $request->min_price . 'to' . $request->max_price;
@@ -62,6 +63,32 @@ class ProductController extends Controller
             $messages['warranty'] = 'no product have ' . $request->warranty . ' warranty';
         }
 
+        // Filter by Rating
+        if ($request->has('rating')) {
+            $messages['rating'] = 'no product found with this rating range';
+            $query->whereHas('reivews', function ($q) use ($request) {
+                $q->where('rating', '=', $request->rating); // Filter by rating
+
+            });
+        }
+
+        if ($request->has('max_rating')) {
+            $messages['max_rating'] = 'no product found with this rating range';
+
+            $query->whereHas('reviews', function ($q) use ($request) {
+                $q->where('rating', '>', $request->max_rating);
+            });
+
+        }
+
+        if ($request->has('min_rating')) {
+            $messages['min_rating'] = 'no product found with this rating range';
+
+            $query->whereHas('reviews', function ($q) use ($request) {
+                $q->where('rating', '<', $request->min_rating);
+            });
+
+        }
 
 
         // Get all matching products (without pagination)
@@ -77,8 +104,8 @@ class ProductController extends Controller
             }
 
             return response()->json([
-                'message' => 'No products found based on your filters.',
-                'errors' => $repones,
+
+                'errors' => $repones
             ], 404);
         }
 
