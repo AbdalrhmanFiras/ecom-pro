@@ -26,7 +26,8 @@ class ProductUpdateVaildate extends FormRequest
             'price' => 'sometimes|numeric',
             'stock' => 'sometimes|integer',
             'description' => 'sometimes|nullable|string',
-            'warranty' => 'sometimes|nullable|string'
+            'warranty' => 'sometimes|nullable|string',
+
         ];
     }
 }

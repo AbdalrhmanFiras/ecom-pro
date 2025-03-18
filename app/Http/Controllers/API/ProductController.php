@@ -66,7 +66,7 @@ class ProductController extends Controller
         // Filter by Rating
         if ($request->has('rating')) {
             $messages['rating'] = 'no product found with this rating range';
-            $query->whereHas('reivews', function ($q) use ($request) {
+            $query->whereHas('reviews', function ($q) use ($request) {
                 $q->where('rating', '=', $request->rating); // Filter by rating
 
             });

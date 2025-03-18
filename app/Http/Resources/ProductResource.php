@@ -20,6 +20,7 @@ class ProductResource extends JsonResource
             'name' => $this->name,
             'price' => $this->price,
             'stock' => $this->stock,
+            'commit' => $this->when(!is_null($this->commit), $this->commit),
             'warranty' => $this->when(!is_null($this->warranty), $this->warranty),
             'description' => $this->when(!is_null($this->description), $this->description),
             // that mean the dec is not null the fun will return true and the fun when will work ,

@@ -21,6 +21,7 @@ class ReviewResource extends JsonResource
             'rating' => $this->rating,
             'commit' => $this->commit
 
+
         ];
     }
 }

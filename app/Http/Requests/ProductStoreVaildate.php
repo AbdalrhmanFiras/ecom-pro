@@ -26,7 +26,7 @@ class ProductStoreVaildate extends FormRequest
             'price' => 'required|numeric',
             'description' => 'nullable|string',
             'stock' => 'required|integer',
-            'warranty' => 'nullable|string'
+            'warranty' => 'nullable|string',
         ];
     }
 }
