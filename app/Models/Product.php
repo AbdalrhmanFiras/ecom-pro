@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Product extends Model
 {
     // use HasFactory;
-    protected $fillable = ['name', 'price', 'description', 'stock', 'user_id', 'Categoery', 'warranty', 'review', 'rating', 'commit'];
+    protected $fillable = ['name', 'price', 'description', 'stock', 'user_id', 'category_id', 'warranty', 'review', 'rating', 'commit'];
 
     public function withlists()
     {
@@ -16,7 +16,7 @@ class Product extends Model
 
     public function categoerys()
     {
-        return $this->belongsTo(Categoery::class);
+        return $this->belongsTo(Categoery::class, 'category_id');
     }
 
     public function reviews()

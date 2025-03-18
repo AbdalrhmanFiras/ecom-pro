@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class Categoery extends Model
 {
 
-    protected $fillable = ['name'];
+    protected $table = 'categories';
+    protected $fillable = ['type'];
     public function products()
     {
         return $this->hasMany(Product::class);
