@@ -49,7 +49,6 @@ class WishlistController extends Controller
     {
         //
     }
-
     /**
      * Remove the specified resource from storage.
      */
