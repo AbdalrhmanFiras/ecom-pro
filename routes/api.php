@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\CategoeryController;
 use App\Http\Controllers\API\OrderController;
 use App\Http\Controllers\API\ProductController;
 use App\Http\Controllers\API\ReviewsController;
@@ -22,6 +23,7 @@ Route::post('logout', [UserController::class, 'logout'])->middleware('auth:sanct
 Route::apiResource('reviews', ReviewsController::class)->middleware('auth:sanctum');
 Route::apiResource('wishlist', WishlistController::class)->middleware('auth:sanctum');
 
+Route::apiResource('categoery', CategoeryController::class)->middleware('auth:sanctum');
 
 Route::apiResource('product', ProductController::class)->middleware('auth:sanctum');
 Route::patch('order/{order}/confirm', [OrderController::class, 'confirmOrder'])->middleware('auth:sanctum');
