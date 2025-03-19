@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 use App\Http\Resources\OrderResource;
 use App\Http\Resources\OrderItemResource;
+use Gate;
 use Illuminate\Support\Facades\DB;
 use App\Models\Order;
 use App\Models\User;
@@ -13,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Requests\OrderStoreVaildate;
 use App\Http\Requests\UpdateStoreVaildate;
+
 use App\Enums\OrderStatus;
 use App\Notifications\OrderShippedNotification;
 use Illuminate\Support\Facades\Log;
@@ -518,7 +520,11 @@ class OrderController extends Controller
      */
     public function index()
     {
-        $orders = Order::with('items')->where('user_id', auth()->id())->get();
+        if (Gate::denies('viewAny', Order::class)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+
+        }
+        $orders = Order::with('items')->get();
         return OrderResource::collection($orders);
     }
 
@@ -530,7 +536,9 @@ class OrderController extends Controller
     public function store(OrderStoreVaildate $request)
     {            // Validate the request data
 
-
+        if (Gate::denies('create', Order::class)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
         // Create the order
 
         $order = Order::create([// the main two / out the item
@@ -572,6 +580,10 @@ class OrderController extends Controller
      */
     public function show(Order $order)
     {
+        if (Gate::denies('view', $order)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+
+        }
         if ($order->user_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
@@ -586,6 +598,7 @@ class OrderController extends Controller
      */
     public function update(UpdateStoreVaildate $request, Order $order)
     {
+
         // Ensure the authenticated user is the owner of the order
         if ($order->user_id !== auth()->id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
@@ -659,8 +672,11 @@ class OrderController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Order $order)
+    public function destroy(User $user, Order $order)
     {
+        if (Gate::denies('delete', $order)) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
         if ($order->user_id !== Auth::id())
             return response()->json(['message' => 'Unauthorized'], 403);
 

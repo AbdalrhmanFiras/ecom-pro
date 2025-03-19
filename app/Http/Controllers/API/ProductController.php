@@ -8,6 +8,7 @@ use App\Http\Requests\ProductStoreVaildate;
 use App\Http\Requests\ProductUpdateVaildate;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
+use Gate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -20,7 +21,7 @@ class ProductController extends Controller
     {
         $messages = [];
         // add Rating Filter ; later soon 
-        $query = Auth::user()->products();
+        $query = Product::query();
 
         if ($request->has('search')) {//filter by name 
             $query->where('name', 'like', '%' . $request->search . '%');
@@ -123,6 +124,10 @@ class ProductController extends Controller
      */
     public function store(ProductStoreVaildate $request)
     {
+        if (Gate::denies('create', Product::class)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         $user_id = Auth::user()->id;//get current ID
         $storevaildate = $request->validated();
         $storevaildate['user_id'] = $user_id;
@@ -151,6 +156,9 @@ class ProductController extends Controller
      */
     public function update(ProductUpdateVaildate $request, Product $product)
     {
+        if (Gate::denies('update', Product::class)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
         $user_id = Auth::user()->id;
 
         if ($user_id != $product->user_id) {
@@ -170,6 +178,10 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
+
+        if (Gate::denies('delete', Product::class)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
         $user_id = Auth::user()->id;
         if ($user_id != $product->user_id) {
             return response()->json('Product Not found', 404);
