@@ -27,6 +27,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+
         Gate::policy(Product::class, ProductPolicy::class);
         Gate::policy(Order::class, OrderController::class);
         Gate::define('create', function (User $user) {
@@ -48,6 +49,43 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('viewAny', function (User $user) {
             return $user->is_admin;
         });
+
+        Gate::define('mark-as-shipped', function (User $user) {
+            return $user->isAdmin(); //(admin)
+        });
+
+        Gate::define('Mark-As-Delivered', function (User $user) {
+            return $user->isAdmin();
+        });
+
+        Gate::define('Mark-As-Completed', function (User $user) {
+            return $user->isAdmin();
+        });
+
+        Gate::define('mark-as-cancelled', function (User $user) {
+            return $user->is_admin;
+        });
+
+        Gate::define('mark-as-refunded', function (User $user) {
+            return $user->is_admin;
+        });
+
+        Gate::define('AddReview', function (User $user) {
+            return $user !== null && !$user->is_admin;
+        });
+
+        Gate::define('UpdateReview', function (User $user) {
+            return $user !== null && !$user->is_admin;
+        });
+
+        Gate::define('AddProductToWishlist', function (User $user) {
+            return $user !== null && !$user->is_admin;
+        });
+
+        Gate::define('DeleteMyWishlist', function (User $user) {
+            return $user !== null && !$user->is_admin;
+        });
+
 
     }
 }

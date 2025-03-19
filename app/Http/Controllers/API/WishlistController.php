@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 use App\Models\Wishlist;
 
 use App\Http\Controllers\Controller;
+use Gate;
 use Illuminate\Http\Request;
 
 class WishlistController extends Controller
@@ -22,6 +23,10 @@ class WishlistController extends Controller
      */
     public function store(Request $request)
     {
+        if (Gate::denies('AddProductToWishlist')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+
+        }
         $request->validate([
             'product_id' => 'required|exists:products,id',
         ]);
@@ -54,6 +59,11 @@ class WishlistController extends Controller
      */
     public function destroy(string $id)
     {
+
+        if (Gate::denies('DeleteMyWishlist')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+
+        }
         $wishlist = Wishlist::findOrFail($id);
         $wishlist->delete();
 

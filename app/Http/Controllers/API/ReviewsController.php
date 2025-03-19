@@ -7,6 +7,7 @@ use App\Http\Resources\ReviewResource;
 use App\Models\Product;
 use App\Http\Controllers\Controller;
 use App\Models\Review;
+use Gate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Pest\Plugins\Only;
@@ -18,7 +19,7 @@ class ReviewsController extends Controller
      */
     public function index()
     {
-        //
+        // 
     }
 
     /**
@@ -26,6 +27,10 @@ class ReviewsController extends Controller
      */
     public function store(ReviewStore $request)
     {
+        if (Gate::denies('AddReview')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+
+        }
         $review = Review::create([
             'product_id' => $request->product_id,
             'user_id' => auth()->id(),
@@ -57,7 +62,10 @@ class ReviewsController extends Controller
      */
     public function update(ReviewUpdate $request, $id)
     {
+        if (Gate::denies('UpdateReview')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
 
+        }
 
         $review = Review::findOrFail($id);
 

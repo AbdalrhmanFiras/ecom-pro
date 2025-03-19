@@ -64,6 +64,11 @@ class OrderController extends Controller
         // Get the authenticated user
         $user = auth()->user();
 
+        if (Gate::denies('Mark-As-Completed')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+
+        }
+
         // Log the order's status before checking
         Log::info('Order status before checks', [
             'order_id' => $order->id,
@@ -149,8 +154,8 @@ class OrderController extends Controller
 
     public function markAsRefunded(Request $request, Order $order)
     {
-        // Ensure the order belongs to the authenticated user (or admin)
-        if ($order->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
+
+        if (Gate::denies('mark-as-refunded')) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -218,8 +223,7 @@ class OrderController extends Controller
 
     public function markAsCancelled(Request $request, Order $order)
     {
-        // Ensure the order belongs to the authenticated user (or admin)
-        if ($order->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
+        if (Gate::denies('mark-as-cancelled')) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -287,11 +291,11 @@ class OrderController extends Controller
 
     public function markAsDelivered(Request $request, Order $order)
     {
-        // Ensure the order belongs to the authenticated user (or admin)
-        if ($order->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
 
+        if (Gate::denies('Mark-As-Delivered')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+
+        }
         // Validate the request data
         try {
             $request->validate([
@@ -359,9 +363,10 @@ class OrderController extends Controller
     {
 
         // Ensure the order belongs to the authenticated user (or admin)
-        if ($order->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
+        if (Gate::denies('mark-as-shipped')) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
+
 
         \Log::info('Checking Order Status:', [
             'expected' => OrderStatus::PROCESSING->value,
@@ -675,7 +680,7 @@ class OrderController extends Controller
     public function destroy(User $user, Order $order)
     {
         if (Gate::denies('delete', $order)) {
-            return response()->json(['message' => 'غير مصرح'], 403);
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
         if ($order->user_id !== Auth::id())
             return response()->json(['message' => 'Unauthorized'], 403);
